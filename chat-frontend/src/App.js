@@ -1,30 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('https://chat-backend-9wx6.onrender.com');
-
 function App() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [username, setUsername] = useState('User' + Math.floor(Math.random() * 1000));
+  const [username] = useState('User' + Math.floor(Math.random() * 1000));
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    socket.on('receive-message', (data) => {
-      setMessages(prev => [...prev, data]);
+    // Initialize socket connection
+    const newSocket = io('https://chat-backend-9wx6.onrender.com');
+    setSocket(newSocket);
+
+    // Listen for incoming messages
+    newSocket.on('receive-message', (data) => {
+      setMessages((prev) => [...prev, data]);
     });
 
-    return () => socket.disconnect();
+    // Clean up connection when component unmounts
+    return () => {
+      newSocket.off('receive-message');
+      newSocket.disconnect();
+    };
   }, []);
 
   const sendMessage = () => {
-    if (message.trim()) {
+    if (message.trim() && socket) {
       socket.emit('send-message', {
         sender: username,
-        text: message
+        text: message,
       });
       setMessage('');
     }
   };
+}
 
   return (
     <div style={{ maxWidth: '600px', margin: '50px auto' }}>
@@ -46,6 +55,5 @@ function App() {
       <button onClick={sendMessage} style={{ padding: '10px', width: '18%' }}>Send</button>
     </div>
   );
-}
 
 export default App;
